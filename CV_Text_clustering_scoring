@@ -114,10 +114,10 @@ FileLink('submission.csv')
 '''
 Perspectives : 1->Load many CV in the same time then allocate each CV in a unique line in the DataFrame
                2->Create a french stop_words to perform countVectorizer and TfidfVectorizer
-               3-> Extract all the other relevant data such as: email and studies by performing another library pdfquery
-               4-> exploring data: identify the most word used 
+               3-> Extract all the other relevant data such as: email and studies by performing another library such as pdfquery
+               4-> Create word2vec embeddings and the CBOW training to predict word from the input text 
                5-> create dictionary of competencies in order to find a matching then calculate the score 
-			   6-> Automate all the leading process
+	       6-> Automate all the leading process
 '''
 
 
