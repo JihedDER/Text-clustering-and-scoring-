@@ -1,0 +1,123 @@
+#!/usr/bin/env python
+import pandas as pd
+import subprocess
+import os
+import re
+import numpy as np
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+from sklearn.cluster import KMeans
+from nltk.corpus import stopwords
+import matplotlib as plt
+import seaborn as sns
+from IPython.display import FileLink
+
+###First Commit: Contribution of developement the Simplest way to extract and score relevant data from candidat CV (Directly from Pdf File) 
+'''
+Steps: 1->Turned out pdf into text file (using pdf miner(python library):https://pypi.org/project/pdfminer/)
+       2->create dataframe to allocate all the lines of the text file
+       3-> apply clustering algo in order to identify clusters 
+       4-> exploring data: identify the most word used and visualize them using histogram
+       5-> create dictionary of competencies in order to find a matching then calculate the score conforming to it.
+       6-> create csv submission file to save data.
+'''
+subprocess.call([r'C:\Users\JIHED\Desktop\pdfminer\command.bat']) # 
+####################
+ '''command.bat:
+ #####
+ @rem Folder Access to execute code
+cd "C:\Users\JIHED\Desktop\pdfminer" 
+
+@rem make txt file, then the name will be the same as the original pdf file
+cmd /k pdftotxt.py -p C:\Users\JIHED\Desktop\pdfminer\ -t C:\Users\JIHED\Desktop\pdfminer\ 
+ #####
+
+pdftotxt.py : Turned out ALL the pdf files into text files
+-p : PDF Files Directory
+-t: Generated text file directory
+ '''
+#link=os.path.basename('C:\Users\JIHED\Desktop\pdfminer\cvjihedderouiche.txt') # extract the base name of file and 
+text=[]
+with open('C:\Users\JIHED\Desktop\pdfminer\cvjihedderouiche.txt','r') as f:
+    for line in f.readlines():
+        text.append(line[:-1].split("\n")) 
+df=pd.DataFrame(text,columns=['review_text'])
+#df=df.dropna()
+#print(df)
+#Test for Clustering
+#print("Shape of X :", X.shape)  # Getting the shape of X
+# Next Step: loading the stop words from https://www.ranks.nl/stopwords/french and implementing them in CountVectorizer (ongoing)
+### in this exemple, we consider that stop_words=none !
+vectorizer = TfidfVectorizer(max_features = 3000,
+                            ngram_range=(1,1),
+                            strip_accents='unicode',
+                            token_pattern=r'\w{1,}')
+X = vectorizer.fit_transform(df['review_text'])
+num_cluster = 2
+model = KMeans(n_clusters=num_cluster, init='k-means++', max_iter=5, n_init=1)
+model.fit(X)
+print("Top terms per cluster:")
+order_centroids = model.cluster_centers_.argsort()[:, ::-1]
+terms = vectorizer.get_feature_names()
+for i in range(num_cluster):
+    print("Cluster %d:" % i),
+    for ind in order_centroids[i, :10]:
+        print(' %s' % terms[ind]),
+    print
+print("\n")
+print("Prediction")
+Y = vectorizer.transform(df['review_text'])
+print(Y)
+predicted = model.predict(Y)
+print("number of cluster :", predicted)
+#Count word frequencies
+cv=CountVectorizer() # French Stop_words= list : ongoing
+words=cv.fit_transform(df['review_text'].str.replace("é", "e").values)
+sum_word=words.sum(axis=0)
+freq=[(word,sum_word[0,index]) for word, index in cv.vocabulary_.items()] 
+freq=sorted(freq, key=lambda x:x[1], reverse=True)
+#Creating frame with 2 columns : Word and frquency
+frequency_word=pd.DataFrame(freq,columns=['Word','Frequency'])
+#print(frequency_word)
+# Plot V-bar to visualize the most used word
+rcParams(['figure, figsize'])=(15,8)
+frequency_word.head(20).plot(x='Word',y='Frequency',kind='bar', color='Green')
+plt.title('The most frequently used words') 
+# {Criterion} Dictionary for word matching and scoring : This is made occasionally for this example and I'm committed to bring out others ones
+list={"data":"1", "nlp":"3","clustering":"3","tableau":"2","nltk":"1","fraude":"4","prediction":"4",
+     "classification":"2","spacy":"1","gensim":"3","word2vec":"2","amazon":"2","jupyter":"2","nmf":"2","lda":"3",
+     "azure":"1","ETL":"3","sql":"2","supervised":"1","oracle":"1","nosql":"2","tfidfvectorizer":"3","communication":"2",
+     "data":"4","master":"2","ingenieur":"2","informatique":"2","decisionnel":"2","alternance":"1","tensorflow":"1",
+      "randomforest":"1","database":"2"}
+score_dict=dict(list)
+#calculate the score conforming to the dictionary score_dict
+def calculate_word_score(f, score_dict): 
+    score=0
+    d=f.lower().split(" ") # Mainly Turned out into TfidfVectorizer after uploading the stop_words bag
+    for word in d:
+        if (word in score_dict):
+            score+=int(score_dict[word])
+            return score
+# Apply(calculate_word_score)
+scores=[]
+for f in df['review_text']:
+    score=calculate_word_score(f, score_dict)
+    print(score)
+    scores.append(score)
+df['scores_appartenance']=scores
+# Evaluate CV: sum of all line scores
+print('the main score for this CV is', df['scores_appartenance'].sum())
+# create submission file with index :review_CV and score
+!echo "review_CV, score" > submission.csv'
+df['review_text','scores_appartenance'].to_csv('submission.csv',index=False)
+FileLink('submission.csv')
+# Next steps
+'''
+Perspectives : 1->Load many CV in the same time then allocate each CV in a unique line in the DataFrame
+               2->Create a french stop_words to perform countVectorizer and TfidfVectorizer
+               3-> Extract all the other relevant data such as: email and studies by performing another library pdfquery
+               4-> exploring data: identify the most word used 
+               5-> create dictionary of competencies in order to find a matching then calculate the score 
+			   6-> Automate all the leading process
+'''
+
+
